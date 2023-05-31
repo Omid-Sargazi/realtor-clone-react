@@ -2,6 +2,11 @@ import React, { useState } from 'react'
 import {Link} from "react-router-dom"
 import { AiFillEye, AiFillEyeInvisible } from 'react-icons/ai';
 import OAuth from '../components/OAuth';
+import {getAuth, createUserWithEmailAndPassword, updateProfile} from "firebase/auth"
+import {db} from "../firebase";
+import { doc, serverTimestamp, setDoc } from 'firebase/firestore';
+import { useNavigate } from 'react-router-dom';
+import { toast } from 'react-toastify';
 export default function SignUp() {
   const [formData, setFormData] = useState({
     name:"",
@@ -10,11 +15,33 @@ export default function SignUp() {
   })
   const [showPassword, setShowPassword] = useState(true)
   const {name, email, password} = formData;
+  const navigate = useNavigate()
   const onChange = (e)=>{
     setFormData((prevState)=>({
       ...prevState,
       [e.target.id]:e.target.value
     }))
+  }
+  const onSubmit =async (e)=>{
+  e.preventDefault()
+  try {
+    const auth = getAuth()
+    const userCredential = await createUserWithEmailAndPassword(auth,email, password)
+    const user = userCredential.user;
+    updateProfile(auth.currentUser, {
+      displayName:name,
+    })
+    const formDataCopy = {...formData}
+    delete formDataCopy.password
+    formDataCopy.timestamp = serverTimestamp()
+    await setDoc(doc(db, "users",user.uid),formDataCopy)
+    toast.success("Sign up was successful")
+
+    navigate("/")
+    console.log(user)
+  } catch (error) {
+    toast.error("something went wrong with the registration")
+  }
   }
   return (
     <section>
@@ -24,7 +51,7 @@ export default function SignUp() {
           <img className="w-full rounded-2xl" src='https://images.unsplash.com/flagged/photo-1564767609342-620cb19b2357?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1073&q=80' alt='rent home'/>
         </div>
         <div className="w-full md:w-[67%] lg:w-[40%] lg:ml-20">
-          <form >
+          <form onSubmit={onSubmit}>
           <input className="mb-6 w-full px-4 py-2 text-xl text-gray-700 rounded bg-white transition ease-out" type='text' id='name' value={name} onChange={onChange} placeholder="Full name"/>
             <input className="mb-6 w-full px-4 py-2 text-xl text-gray-700 rounded bg-white transition ease-out" type='email' id='email' value={email} onChange={onChange} placeholder="Email address"/>
            <div className='relative mb-6'>
